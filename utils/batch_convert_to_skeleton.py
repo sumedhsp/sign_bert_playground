@@ -3,27 +3,23 @@ import cv2
 import numpy as np
 import torch
 import torchvision
-from mmengine import Config
-from mmcls.models import build_classifier
+from mmpose.apis import inference_topdown, init_model
+from mmpose.structures import merge_data_samples
 
-# Load RTMPose Model
-def load_rtmpose():
-    config_path = "../models/rtmpose-l_8xb64-270e_coco-wholebody-256x192.py"
-    checkpoint_path = "../models/rtmpose-l_simcc-coco-wholebody_pt-aic-coco_270e-256x192-6f206314_20230124.pth"
+# Load Pose Estimation Model (RTMPose)
+POSE_CONFIG = "../models/rtmpose-l_8xb64-270e_coco-wholebody-256x192.py"
+POSE_MODEL = "../models/rtmpose-l_simcc-coco-wholebody_pt-aic-coco_270e-256x192-6f206314_20230124.pth"
 
-    cfg = Config.fromfile(config_path)
-    model = build_classifier(cfg.model)
-    
-    # Load checkpoint
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    model.load_state_dict(checkpoint["state_dict"], strict=False)
-    
-    model.eval().to("cuda" if torch.cuda.is_available() else "cpu")
-    return model
+original_torch_load = torch.load
 
-# Load Models
-rtmpose_model = load_rtmpose()
+def patched_torch_load(*args, **kwargs):
+    kwargs["weights_only"] = False
+    return original_torch_load(*args, **kwargs)
+
+torch.load = patched_torch_load  # Override torch.load
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
+pose_model = init_model(POSE_CONFIG, POSE_MODEL, device=device)
 
 # Load Faster R-CNN from PyTorch
 det_model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True).to(device)
@@ -49,9 +45,9 @@ def estimate_pose(frame, person_detections):
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     frame_tensor = torch.from_numpy(frame_rgb).permute(2, 0, 1).float().unsqueeze(0).to(device)
 
-    with torch.no_grad():
-        pose_data = rtmpose_model(frame_tensor)  # Run RTMPose inference
-
+    pose_results = inference_topdown(pose_model, frame_rgb, person_detections)
+    pose_data = merge_data_samples(pose_results)
+    
     # Check if pose_data contains valid keypoints
     if hasattr(pose_data, "pred_instances") and pose_data.pred_instances.keypoints is not None:
         keypoints = pose_data.pred_instances.keypoints.cpu().numpy()  # Extract keypoints
