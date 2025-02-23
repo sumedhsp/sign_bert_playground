@@ -1,6 +1,6 @@
 # SignBERT+ Sign Language Understanding
 
-This is a playground repository for testing purposes.
+This is a playground repository for testing purposes..
 
 
 ## Citation
