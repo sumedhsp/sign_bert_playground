@@ -58,7 +58,7 @@ def estimate_pose(frame, person_detections):
         if len(keypoints.shape) == 3 and keypoints.shape[0] > 1:
             keypoints = keypoints[0]  # Select first detected person
         
-        print (keypoints.shape, keypoints.shape[0])
+        #print (keypoints.shape, keypoints.shape[0])
         # Ensure the shape is (133, 2) before proceeding
         if keypoints.shape[0] == 1:  # If batch dimension exists
             keypoints = keypoints.squeeze(0)  # Remove first dimension
@@ -66,6 +66,11 @@ def estimate_pose(frame, person_detections):
         # Extract confidence scores from keypoint_scores
         if hasattr(pose_data.pred_instances, "keypoint_scores"):
             confidence = pose_data.pred_instances.keypoint_scores
+
+            # Ensure confidence has the correct shape
+            if confidence.shape[0] > 133:
+                confidence = confidence[:133]  # Select first 133 scores
+
         else:
             confidence = np.ones((133,))  # Default confidence=1 if not available
 
