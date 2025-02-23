@@ -7,6 +7,7 @@ from mmpose.apis import inference_topdown, init_model
 from mmpose.structures import merge_data_samples
 
 # Load Pose Estimation Model (RTMPose)
+print (os.getcwd())
 POSE_CONFIG = "../models/rtmpose-l_8xb64-270e_coco-wholebody-256x192.py"
 POSE_MODEL = "../models/rtmpose-l_simcc-coco-wholebody_pt-aic-coco_270e-256x192-6f206314_20230124.pth"
 
