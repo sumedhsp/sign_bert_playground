@@ -51,11 +51,11 @@ def estimate_pose(frame, person_detections):
     
     # Check if pose_data contains valid keypoints
     if hasattr(pose_data, "pred_instances") and pose_data.pred_instances.keypoints is not None:
-        keypoints = pose_data.pred_instances.keypoints.cpu().numpy()  # Extract keypoints
+        keypoints = pose_data.pred_instances.keypoints  # Extract keypoints
         
         # Extract confidence scores from keypoint_scores
         if hasattr(pose_data.pred_instances, "keypoint_scores"):
-            confidence = pose_data.pred_instances.keypoint_scores.cpu().numpy()
+            confidence = pose_data.pred_instances.keypoint_scores
         else:
             confidence = np.ones((133,))  # Default confidence=1 if not available
 
