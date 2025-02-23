@@ -53,6 +53,9 @@ def estimate_pose(frame, person_detections):
     if hasattr(pose_data, "pred_instances") and pose_data.pred_instances.keypoints is not None:
         keypoints = pose_data.pred_instances.keypoints  # Extract keypoints
         
+
+        keypoints = keypoints.squeeze(axis=0)  # Now shape: (133, 2)
+        
         # Extract confidence scores from keypoint_scores
         if hasattr(pose_data.pred_instances, "keypoint_scores"):
             confidence = pose_data.pred_instances.keypoint_scores
