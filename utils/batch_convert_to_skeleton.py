@@ -88,12 +88,15 @@ def estimate_pose(frame, person_detections):
 def process_videos_in_batches(video_folder, output_folder, batch_size=5):
     """Process videos from a folder in batches and convert them to skeleton data."""
     os.makedirs(output_folder, exist_ok=True)
+    mismatched_videos_file = "mismatched_videos.txt"
 
     # Get list of all video files in the folder
     video_files = [f for f in os.listdir(video_folder) if f.endswith((".mp4", ".avi", ".mov"))]
     
     total_videos = len(video_files)
     print(f"Found {total_videos} videos. Processing in batches of {batch_size}.")
+    
+    mismatched_videos = []
 
     for i in range(0, total_videos, batch_size):
         batch_videos = video_files[i:i + batch_size]  # Select batch of videos
@@ -104,8 +107,11 @@ def process_videos_in_batches(video_folder, output_folder, batch_size=5):
 
             print(f"Processing {video_file}...")
 
+
             cap = cv2.VideoCapture(video_path)
             all_keypoints = []
+
+            mismatch_flag = False
 
             while cap.isOpened():
                 ret, frame = cap.read()
@@ -120,16 +126,33 @@ def process_videos_in_batches(video_folder, output_folder, batch_size=5):
                     continue
 
                 # Step 2: Estimate pose using RTMPose (PyTorch)
-                keypoints = estimate_pose(frame, person_detections)
-                all_keypoints.append(keypoints)
+                try:
+                    keypoints = estimate_pose(frame, person_detections)
+                    all_keypoints.append(keypoints)
+                except Exception as e:
+                    print (f"Exception occured with {video_file}. Skipping for now!")
+                    mismatched_videos.append(video_file)
+                    mismatch_flag = True
+                    break
 
             cap.release()
+
+            if (mismatch_flag):
+                continue
 
             # Convert list to numpy array and save
             all_keypoints = np.array(all_keypoints)  # Shape: (num_frames, 133, 3)
             np.save(output_skeleton_path, all_keypoints)
 
             print(f"Saved skeleton data for {video_file} to {output_skeleton_path}")
+
+
+    # Log mismatched videos
+    if mismatched_videos:
+        with open(mismatched_videos_file, "w") as f:
+            for video in mismatched_videos:
+                f.write(video + "\n")
+        print(f"Logged {len(mismatched_videos)} mismatched videos in {mismatched_videos_file}")
 
     print("Batch processing completed.")
 
