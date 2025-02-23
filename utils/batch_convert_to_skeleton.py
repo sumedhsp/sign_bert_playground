@@ -8,8 +8,8 @@ from mmpose.structures import merge_data_samples
 
 # Load Pose Estimation Model (RTMPose)
 print (os.getcwd())
-POSE_CONFIG = "../models/rtmpose-l_8xb64-270e_coco-wholebody-256x192.py"
-POSE_MODEL = "../models/rtmpose-l_simcc-coco-wholebody_pt-aic-coco_270e-256x192-6f206314_20230124.pth"
+POSE_CONFIG = "sign_bert_playground/models/rtmpose-l_8xb64-270e_coco-wholebody-256x192.py"
+POSE_MODEL = "sign_bert_playground/models/rtmpose-l_simcc-coco-wholebody_pt-aic-coco_270e-256x192-6f206314_20230124.pth"
 
 original_torch_load = torch.load
 
@@ -119,6 +119,6 @@ def process_videos_in_batches(video_folder, output_folder, batch_size=5):
     print("Batch processing completed.")
 
 # Example usage
-video_folder = "../WLASL2000/"
-output_folder = "../wlasl_skeleton/"
+video_folder = "sign_bert_playground/WLASL2000/"
+output_folder = "sign_bert_playground/wlasl_skeleton/"
 process_videos_in_batches(video_folder, output_folder, batch_size=5)
