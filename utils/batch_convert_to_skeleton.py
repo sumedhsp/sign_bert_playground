@@ -58,6 +58,7 @@ def estimate_pose(frame, person_detections):
         if len(keypoints.shape) == 3 and keypoints.shape[0] > 1:
             keypoints = keypoints[0]  # Select first detected person
         
+        print (keypoints.shape, keypoints.shape[0])
         # Ensure the shape is (133, 2) before proceeding
         if keypoints.shape[0] == 1:  # If batch dimension exists
             keypoints = keypoints.squeeze(0)  # Remove first dimension
