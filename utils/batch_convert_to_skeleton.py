@@ -88,14 +88,22 @@ def estimate_pose(frame, person_detections):
 def process_videos_in_batches(video_folder, output_folder, batch_size=5):
     """Process videos from a folder in batches and convert them to skeleton data."""
     os.makedirs(output_folder, exist_ok=True)
-    mismatched_videos_file = "mismatched_videos.txt"
+    print (os.getcwd())
+    mismatched_videos_file = os.path.join(os.getcwd(), "mismatched_videos.txt")
 
     # Get list of all video files in the folder
     video_files = [f for f in os.listdir(video_folder) if f.endswith((".mp4", ".avi", ".mov"))]
     
+    # Get already processed videos
+    processed_videos = {os.path.splitext(f)[0] for f in os.listdir(output_folder) if f.endswith(".npy")}
+
     total_videos = len(video_files)
     print(f"Found {total_videos} videos. Processing in batches of {batch_size}.")
     
+    # Remove already processed videos from the list
+    video_files = [f for f in video_files if os.path.splitext(f)[0] not in processed_videos]
+    print(f"Skipping {total_videos - len(video_files)} already processed videos.")
+
     mismatched_videos = []
 
     for i in range(0, total_videos, batch_size):
