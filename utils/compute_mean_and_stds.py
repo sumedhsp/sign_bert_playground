@@ -11,6 +11,9 @@ def read_json(fpath):
 
 def compute_means_stds(dataset,  skeleton_dpath):
     """Compute mean and standard deviation for the dataset."""
+
+    print ("Computing mean + std from skeleton data")
+    
     all_data = []
     for sample in dataset:
         skeleton_video_fpath = os.path.join(skeleton_dpath, f"{sample}.npy")
@@ -21,6 +24,8 @@ def compute_means_stds(dataset,  skeleton_dpath):
     all_data = np.concatenate(all_data, axis=0)  # Stack all frames
     means = np.mean(all_data, axis=0)
     stds = np.std(all_data, axis=0)
+
+    print ("Finished Computing mean + std from skeleton data")
 
     return means, stds
 
