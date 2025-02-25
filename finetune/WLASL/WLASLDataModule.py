@@ -25,22 +25,23 @@ class WLASLDataModule(pl.LightningDataModule):
     """
 
     # Define dataset paths
-    DPATH = ''
+    DPATH = 'sign_bert_playground/'
+
+    RAW_VIDEO_PATH = os.path.join(DPATH, 'WLASL2000')
     PREPROCESS_DPATH = os.path.join(DPATH, 'preprocess')
-    SKELETON_DPATH = os.path.join(DPATH, 'skeleton-data', 'rtmpose-l_8xb64-270e_coco-wholebody-256x192')
-    TRAIN_SPLIT_JSON_FPATH = os.path.join(DPATH, 'WLASL_train.json')
-    VAL_SPLIT_JSON_FPATH = os.path.join(DPATH, 'WLASL_val.json')
-    TEST_SPLIT_JSON_FPATH = os.path.join(DPATH, 'WLASL_test.json')
-    CLASSES_JSON_FPATH = os.path.join(DPATH, 'WLASL_classes.json')
-    TRAIN_SKELETON_DPATH = os.path.join(SKELETON_DPATH, 'train')
-    VAL_SKELETON_DPATH = os.path.join(SKELETON_DPATH, 'val')
-    TEST_SKELETON_DPATH = os.path.join(SKELETON_DPATH, 'test')
+    
+    # The meta-data can be changed.
+    META_DATA_FPATH = os.path.join(DPATH, 'finetune/WLASL/preprocess/nslt_100.json')
+
+    CLASSES_JSON_FPATH = os.path.join(DPATH, 'finetune/WLASL/WLASL_class_list.txt')
+    SKELETON_DATA_DPATH = os.path.join(DPATH, "wlasl_skeleton")
+    
     MEANS_FPATH = os.path.join(PREPROCESS_DPATH, 'means.npy')
     STDS_FPATH = os.path.join(PREPROCESS_DPATH, 'stds.npy')
     VIDEO_ID_PATTERN = r"(?<=v=).{11}"
     PADDING_VALUE = 0.0
 
-    def __init__(self, batch_size, normalize):
+    def __init__(self, batch_size, normalize, meta_data_file_name):
         """
         Initialize the WLASLDataModule.
 
@@ -52,6 +53,11 @@ class WLASLDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.normalize = normalize
 
+        # If provided, update the meta-data file
+        if (meta_data_file_name):
+            meta_data_path = os.path.join(self.DPATH, 'finetune/WLASL/preprocess')
+            self.META_DATA_FPATH = os.path.join(meta_data_path, meta_data_file_name)
+
     def setup(self, stage):
         """
         Prepares the datasets for the given stage (either 'fit' or 'test').
@@ -59,29 +65,28 @@ class WLASLDataModule(pl.LightningDataModule):
         Parameters:
         stage (str): The stage for which to prepare the datasets.
         """
-        classes = read_json(WLASLDataModule.CLASSES_JSON_FPATH)
-        missing_video_ids = read_txt_as_list(WLASLDataModule.MISSING_VIDEOS_FPATH)
-
+        
         if stage == "fit":
-            train_info = read_json(WLASLDataModule.TRAIN_SPLIT_JSON_FPATH)
-            [ti.update(class_id=classes.index(ti["text"])) for ti in train_info]
-            [ti.update(video_id=re.search(WLASLDataModule.VIDEO_ID_PATTERN, ti["url"]).group()) for ti in train_info]
-            train_info = [ti for ti in train_info if ti["video_id"] not in missing_video_ids]
+            # Loading from the nslt_{class} file. 
+            # Modified the code to handle the data structure as above.
+            video_info = read_json(WLASLDataModule.META_DATA_FPATH)
+            train_info = [video for video in video_info if video_info[video]['subset'] == 'train']
+            
             self.train_dataset = WLASLDataset(
+                video_info,
                 train_info,
-                WLASLDataModule.TRAIN_SKELETON_DPATH,
+                WLASLDataModule.SKELETON_DATA_DPATH,
                 self.normalize,
                 np.load(WLASLDataModule.MEANS_FPATH),
                 np.load(WLASLDataModule.STDS_FPATH)
             )
 
-            val_info = read_json(WLASLDataModule.VAL_SPLIT_JSON_FPATH)
-            [ti.update(class_id=classes.index(ti["text"])) for ti in val_info]
-            [ti.update(video_id=re.search(WLASLDataModule.VIDEO_ID_PATTERN, ti["url"]).group()) for ti in val_info]
-            val_info = [ti for ti in val_info if ti["video_id"] not in missing_video_ids]
+            val_info = [video for video in video_info if video_info[video]['subset'] == 'val']
+            
             self.val_dataset = WLASLDataset(
+                video_info,
                 val_info,
-                WLASLDataModule.VAL_SKELETON_DPATH,
+                WLASLDataModule.SKELETON_DATA_DPATH,
                 self.normalize,
                 np.load(WLASLDataModule.MEANS_FPATH),
                 np.load(WLASLDataModule.STDS_FPATH)
@@ -119,7 +124,7 @@ class WLASLDataset(Dataset):
     - normalize_std (numpy.ndarray or None): Standard deviation values for normalization.
     """
 
-    def __init__(self, train_info, skeleton_dpath, normalize, normalize_mean=None, normalize_std=None):
+    def __init__(self, video_info, train_info, skeleton_dpath, normalize, normalize_mean=None, normalize_std=None):
         """
         Initialize the WLASLDataset.
 
@@ -131,6 +136,7 @@ class WLASLDataset(Dataset):
         - normalize_std (numpy.ndarray, optional): Standard deviation values for normalization.
         """
         super().__init__()
+        self.video_info = video_info
         self.train_info = train_info
         self.skeleton_dpath = skeleton_dpath
         self.normalize = normalize
@@ -150,11 +156,10 @@ class WLASLDataset(Dataset):
         Returns:
         - dict: A dictionary containing the sample data.
         """
-        sample = self.train_info[idx]
-        class_id = sample["class_id"]
-        video_id = sample["video_id"]
-        start_video = sample["start"]
-        end_video = sample["end"]
+        video_id = self.train_info[idx]
+        class_id = self.video_info[video_id]['action'][0]
+        start_video = self.video_info[video_id]['action'][1]
+        end_video = self.video_info[video_id]['action'][2]
 
         skeleton_video_fpath = os.path.join(self.skeleton_dpath, f"{video_id}.npy")
         skeleton_data = np.load(skeleton_video_fpath)[start_video:end_video]

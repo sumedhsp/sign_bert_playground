@@ -7,7 +7,7 @@ from lightning.pytorch import Trainer
 from lightning.pytorch import loggers as pl_loggers
 from lightning.pytorch.callbacks import ModelCheckpoint
 
-from finetune.ISLR.MSASLDataModule import MSASLDataModule
+from finetune.WLASL.WLASLDataModule import WLASLDataModule
 from finetune.SignBERTModel import SignBertModel
 
 from IPython import embed;
@@ -30,12 +30,16 @@ def main(args):
     config = Config(**cfg)
     print(config)
     # Instantiate data module with batch size and additional datamodule arguments
-    datamodule = MSASLDataModule(
+    datamodule = WLASLDataModule(
         batch_size=config.batch_size,
-        **config.datamodule_args
+        **config.datamodule_args,
+        meta_data_file_name = args.metadata        
     )
+    
     # Instantiate the model with checkpoint, learning rate, and head arguments
-    model = SignBertModel(ckpt=config.ckpt, lr=config.lr, head_args=config.head_args)
+    model_checkpoint = "checkpoints/Hands17/ckpts/epoch=epoch=4806-step=step=28842-val_PCK_20=0.9101.ckpt"
+    model = SignBertModel(ckpt=model_checkpoint, lr=config.lr, head_args=config.head_args)
+    
     # Setup logging and checkpoint directories
     logs_dpath = os.path.join(os.getcwd(), "finetune_logs")
     tb_logger = pl_loggers.TensorBoardLogger(save_dir=logs_dpath, name=config.name)
@@ -71,6 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", default=10, type=int)
     parser.add_argument("--name", default="test", type=str)
     parser.add_argument("--precision", default="32-true", type=str)
+    parser.add_argument("--metadata", default="nslt_2000.json", type=str)
     args = parser.parse_args()
 
     main(args)
