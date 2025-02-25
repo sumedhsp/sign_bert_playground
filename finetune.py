@@ -37,9 +37,11 @@ def main(args):
     )
     
     # Instantiate the model with checkpoint, learning rate, and head arguments
+    print ("Loading the model..")
     model_checkpoint = "checkpoints/Hands17/ckpts/epoch=epoch=4806-step=step=28842-val_PCK_20=0.9101.ckpt"
     model = SignBertModel(ckpt=model_checkpoint, lr=config.lr, head_args=config.head_args)
     
+    print ("Setting up logging and checkpoint directories..")
     # Setup logging and checkpoint directories
     logs_dpath = os.path.join(os.getcwd(), "finetune_logs")
     tb_logger = pl_loggers.TensorBoardLogger(save_dir=logs_dpath, name=config.name)
@@ -53,6 +55,8 @@ def main(args):
         filename="epoch={epoch:02d}-step={step}-{val_acc:.4f}", 
         save_last=True
     )
+
+    print ("Setting up Trainer object..")
     # Setup and configure the Trainer
     trainer = Trainer(
         accelerator="gpu",
@@ -65,6 +69,8 @@ def main(args):
         num_sanity_val_steps=0,
         precision=config.precision
     )
+
+    print ("Starting training..")
     trainer.fit(model, datamodule) # Start training
 
 if __name__ == "__main__":
