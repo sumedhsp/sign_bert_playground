@@ -70,8 +70,81 @@ class Graph():
             neighbor_link = [(i - 1, j - 1) for (i, j) in neighbor_1base]
             self.edge = self_link + neighbor_link
             self.center = 2
-        # elif layout=='customer settings'
-        #     pass
+        elif layout=='mediapipe_hand':
+            # Mediapipe hand connections
+            self.num_node = 21
+            self_link = [(i, i) for i in range(self.num_node)]
+            neighbor_1base = [
+                (0, 1), (0, 5), (0, 17), # Wrist
+                (5, 9), (9, 13), (13, 17), # Palm
+                (1, 2), (2, 3), (3, 4), # Thumb
+                (5, 6), (6, 7), (7, 8), # Index
+                (9, 10), (10, 11), (11, 12), # Middle
+                (13, 14), (14, 15), (15, 16), # Ring
+                (17, 18), (18, 19), (19, 20) # Pinky
+            ]
+            # neighbor_link = [(i - 1, j - 1) for (i, j) in neighbor_1base]
+            self.edge = self_link + neighbor_1base
+            self.center = 0
+        elif layout == 'mediapipe_six_hand_cluster':
+            self.num_node = 6 # One palm + five fingers
+            self_link = [(i, i) for i in range(self.num_node)]
+            neighbor_1base = [
+                (0,1), (0,2), (0,3), (0,4), (0,5),
+                (1,0), (1,2), (1,3), (1,4), (1,5),
+                (2,0), (2,1), (2,3), (2,4), (2,5),
+                (3,0), (3,1), (3,2), (3,4), (3,5),
+                (4,0), (4,1), (4,2), (4,3), (4,5),
+                (5,0), (5,1), (5,2), (5,3), (5,4),
+            ]
+            self.edge = self_link + neighbor_1base
+            self.center = 0
+        elif layout == 'mmpose_arms':
+            self.num_node = 6
+            self_link = [(i, i) for i in range(self.num_node)]
+            neighbor_1base = [
+                (0, 2), (2, 4), (1, 3), (3, 5)
+            ]
+            self.edge = self_link + neighbor_1base
+            self.center = 0
+        elif layout=='hands17':
+            # Keypoints order: ["Wrist", "TMCP", "IMCP", "MMCP", "RMCP", "PMCP", "TPIP", "TDIP", "TTIP", "IPIP", "IDIP", "ITIP", "MPIP", "MDIP", "MTIP", "RPIP", "RDIP", "RTIP", "PPIP", "PDIP", "PTIP"]
+            # Hand image: http://icvl.ee.ic.ac.uk/hands17/wp-content/uploads/sites/5/2017/06/hand_map-768x475.png
+            """
+            0 Wrist
+            1 TMCP
+            2 IMCP
+            3 MMCP
+            4 RMCP
+            5 PMCP
+            6 TPIP
+            7 TDIP
+            8 TTIP
+            9 IPIP
+            10 IDIP
+            11 ITIP
+            12 MPIP
+            13 MDIP
+            14 MTIP
+            15 RPIP
+            16 RDIP
+            17 RTIP
+            18 PPIP
+            19 PDIP
+            20 PTIP
+            """
+            self.num_node = 21
+            self_link = [(i, i) for i in range(self.num_node)]
+            neighbor_1base = [
+                (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), # Wrist with MCP
+                (1, 6), (6, 7), (7, 8), # Thumb
+                (2, 9), (9, 10), (10, 11), # Index
+                (3, 12), (12, 13), (13, 14), # Middle
+                (4, 15), (15, 16), (16, 17), # Ring
+                (5, 18), (18, 19), (19, 20) # Pinky
+            ]
+            self.edge = self_link + neighbor_1base
+            self.center = 0
         else:
             raise ValueError("Do Not Exist This Layout.")
 

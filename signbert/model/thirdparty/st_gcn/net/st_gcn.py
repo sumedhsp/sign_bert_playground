@@ -4,7 +4,81 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from signbert.model.thirdparty.st_gcn.net.utils.tgcn import ConvTemporalGraphical
+from signbert.model.masked_batchnorm import MaskedBatchNorm1d, MaskedBatchNorm2d
 from signbert.model.thirdparty.st_gcn.net.utils.graph import Graph
+
+
+class HeadlessModel(nn.Module):
+    r"""Spatial temporal graph convolutional networks without a task-specific
+    head.
+
+    Args:
+        in_channels (int): Number of channels in the input data
+        graph_args (dict): The arguments for building the graph
+        edge_importance_weighting (bool): If ``True``, adds a learnable
+            importance weighting to the edges of the graph
+        **kwargs (optional): Other parameters for graph convolution units
+
+    Shape:
+        - Input: :math:`(N, in_channels, T_{in}, V_{in}, M_{in})`
+        - Output: :math:`(N, num_class)` where
+            :math:`N` is a batch size,
+            :math:`T_{in}` is a length of input sequence,
+            :math:`V_{in}` is the number of graph nodes,
+            :math:`M_{in}` is the number of instance in a frame.
+    """
+
+    def __init__(self, in_channels, num_hid, graph_args,
+                 edge_importance_weighting, **kwargs):
+        super().__init__()
+
+        # load graph
+        self.graph = Graph(**graph_args)
+        A = torch.tensor(self.graph.A, dtype=torch.float32, requires_grad=False)
+        self.register_buffer('A', A)
+
+        # build networks
+        spatial_kernel_size = A.size(0)
+        temporal_kernel_size = 9
+        kernel_size = (temporal_kernel_size, spatial_kernel_size)
+        # self.data_bn = nn.BatchNorm1d(in_channels * A.size(1))
+        self.data_bn = MaskedBatchNorm1d(in_channels * A.size(1))
+        kwargs0 = {k: v for k, v in kwargs.items() if k != 'dropout'}
+        self.st_gcn_networks = nn.ModuleList((
+            st_gcn(in_channels, num_hid, kernel_size, 1, residual=False, **kwargs0),
+            st_gcn(num_hid, num_hid, kernel_size, 1, **kwargs),
+        ))
+
+        # initialize parameters for edge importance weighting
+        if edge_importance_weighting:
+            self.edge_importance = nn.ParameterList([
+                nn.Parameter(torch.ones(self.A.size()))
+                for i in self.st_gcn_networks
+            ])
+        else:
+            self.edge_importance = [1] * len(self.st_gcn_networks)
+
+    def forward(self, x, lens):
+        # data normalization
+        N, C, T, V, M = x.size()
+        x = x.permute(0, 4, 3, 1, 2).contiguous()
+        x = x.view(N * M, V * C, T)
+        x = self.data_bn(x, lens)
+        x = x.view(N, M, V, C, T)
+        x = x.permute(0, 1, 3, 4, 2).contiguous()
+        x = x.view(N * M, C, T, V)
+
+        # forwad
+        count = 0
+        for gcn, importance in zip(self.st_gcn_networks, self.edge_importance):
+            count += 1
+            x, _ = gcn(x, self.A * importance, lens)
+
+        _, c, t, v = x.size()
+        x = x.view(N, M, c, t, v).permute(0, 2, 3, 4, 1)
+
+        return x
+
 
 class Model(nn.Module):
     r"""Spatial temporal graph convolutional networks.
@@ -115,6 +189,7 @@ class Model(nn.Module):
 
         return output, feature
 
+
 class st_gcn(nn.Module):
     r"""Applies a spatial temporal graph convolution over an input graph sequence.
 
@@ -154,10 +229,14 @@ class st_gcn(nn.Module):
         padding = ((kernel_size[0] - 1) // 2, 0)
 
         self.gcn = ConvTemporalGraphical(in_channels, out_channels,
-                                         kernel_size[1])
+                                         kernel_size[1]) # conv2d + einsum
+
+
+        self.tcn_bn1 = MaskedBatchNorm2d(out_channels)
+        self.tcn_bn2 = MaskedBatchNorm2d(out_channels)
+        self.tcn_drop = nn.Dropout(dropout)
 
         self.tcn = nn.Sequential(
-            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(
                 out_channels,
@@ -166,8 +245,6 @@ class st_gcn(nn.Module):
                 (stride, 1),
                 padding,
             ),
-            nn.BatchNorm2d(out_channels),
-            nn.Dropout(dropout, inplace=True),
         )
 
         if not residual:
@@ -188,10 +265,13 @@ class st_gcn(nn.Module):
 
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self, x, A):
-
+    def forward(self, x, A, lens):
         res = self.residual(x)
         x, A = self.gcn(x, A)
-        x = self.tcn(x) + res
+        x = self.tcn_bn1(x, lens)
+        x = self.tcn(x)
+        x = self.tcn_bn2(x, lens)
+        x = self.tcn_drop(x)
+        x = x + res
 
         return self.relu(x), A
