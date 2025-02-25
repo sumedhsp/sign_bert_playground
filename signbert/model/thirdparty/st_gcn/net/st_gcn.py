@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from utils.tgcn import ConvTemporalGraphical
-from utils.graph import Graph
+from signbert.model.thirdparty.st_gcn.net.utils.tgcn import ConvTemporalGraphical
+from signbert.model.thirdparty.st_gcn.net.utils.graph import Graph
 
 class Model(nn.Module):
     r"""Spatial temporal graph convolutional networks.
