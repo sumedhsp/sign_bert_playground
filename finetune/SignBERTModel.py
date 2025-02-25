@@ -34,13 +34,15 @@ class SignBertModel(pl.LightningModule):
         super().__init__()
         self.lr = lr
         # Load the pre-trained base model from the given checkpoint
-        self.model = BaseModel.load_from_checkpoint(ckpt, map_location="cpu")
+        self.model = BaseModel.load_from_checkpoint(ckpt, map_location="cpu", 
+                                                    arms_extractor_cls=head_args["arms_extractor_cls"], 
+                                                    arms_extractor_args=head_args["arms_extractor_args"])
         self._init_base_model()
         # Determine the input channel size for the custom head based on the base model's output
         ge_hid_dim = self.model.hparams.gesture_extractor_args["hid_dim"]
         in_channels = ge_hid_dim[-1] if isinstance(ge_hid_dim, list) else ge_hid_dim
         # Initialize the custom head for sign language recognition
-        self.head = Head(in_channels=in_channels, **head_args)
+        self.head = Head(in_channels=in_channels, num_classes=head_args["num_classes"])
         # Initialize accuracy metrics for training and validation
         num_classes = head_args["num_classes"]
         self.train_acc = Accuracy(task="multiclass", num_classes=num_classes)
