@@ -38,7 +38,7 @@ def main(args):
     
     # Instantiate the model with checkpoint, learning rate, and head arguments
     print ("Loading the model..")
-    model_checkpoint = "checkpoints/Hands17/ckpts/epoch=epoch=4806-step=step=28842-val_PCK_20=0.9101.ckpt"
+    model_checkpoint = "sign_bert_playground/checkpoints/Hands17/ckpts/epoch=epoch=4806-step=step=28842-val_PCK_20=0.9101.ckpt"
     model = SignBertModel(ckpt=model_checkpoint, lr=config.lr, head_args=config.head_args)
     
     print ("Setting up logging and checkpoint directories..")
@@ -57,12 +57,13 @@ def main(args):
     )
 
     print ("Setting up Trainer object..")
+    print ("{config.epochs} epochs..")
     # Setup and configure the Trainer
     trainer = Trainer(
         accelerator="gpu",
         strategy="auto",
         devices=[config.device],
-        max_epochs=config.epochs,
+        max_epochs=50,
         logger=tb_logger,
         callbacks=[ckpt_cb],
         log_every_n_steps=1,
