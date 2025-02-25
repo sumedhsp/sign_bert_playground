@@ -6,3 +6,9 @@ datamodule_args:
 
 head_args:
   num_classes: 100
+  arms_extractor_cls: signbert.model.ArmsExtractor.ArmsExtractor
+  arms_extractor_args:
+    in_channels: 2
+    hid_dim: 144
+    dropout: 0.1
+  
