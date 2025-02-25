@@ -39,7 +39,7 @@ def main(args):
     # Instantiate the model with checkpoint, learning rate, and head arguments
     print ("Loading the model..")
     model_checkpoint = "sign_bert_playground/checkpoints/Hands17/ckpts/epoch=epoch=4806-step=step=28842-val_PCK_20=0.9101.ckpt"
-    model = SignBertModel(ckpt=model_checkpoint, lr=config.lr, head_args=config.head_args)
+    model = SignBertModel(ckpt=args.ckpt, lr=config.lr, head_args=config.head_args)
     
     print ("Setting up logging and checkpoint directories..")
     # Setup logging and checkpoint directories
