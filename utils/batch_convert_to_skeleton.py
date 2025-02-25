@@ -58,7 +58,6 @@ def estimate_pose(frame, person_detections):
         if len(keypoints.shape) == 3 and keypoints.shape[0] > 1:
             keypoints = keypoints[0]  # Select first detected person
         
-        print (keypoints.shape, keypoints.shape[0])
         # Ensure the shape is (133, 2) before proceeding
         if keypoints.shape[0] == 1:  # If batch dimension exists
             keypoints = keypoints.squeeze(0)  # Remove first dimension
@@ -67,10 +66,9 @@ def estimate_pose(frame, person_detections):
         if hasattr(pose_data.pred_instances, "keypoint_scores"):
             confidence = pose_data.pred_instances.keypoint_scores
 
-            print (confidence.shape, "confidence")
             # Ensure confidence has the correct shape
-            if confidence.shape[0] > 133:
-                confidence = confidence[:133]  # Select first 133 scores
+            if confidence.shape[0] > 1:
+                confidence = confidence[0]  # Select first 133 scores
 
         else:
             confidence = np.ones((133,))  # Default confidence=1 if not available
@@ -114,9 +112,9 @@ def process_videos_in_batches(video_folder, output_folder, batch_size=5):
     """Process videos from a folder in batches and convert them to skeleton data."""
     os.makedirs(output_folder, exist_ok=True)
     print (os.getcwd())
-    mismatched_videos_file = os.path.join(os.getcwd(), "mismatched_videos.txt")
+    mismatched_videos_file = os.path.join(os.getcwd(), "failed2.txt")
 
-    mismatched_vids = read_file_to_list(mismatched_videos_file)
+    mismatched_vids = read_file_to_list(os.path.join(os.getcwd(), "mismatched_videos.txt"))
 
     # Get list of all video files in the folder
     video_files = [f for f in os.listdir(video_folder) if f.endswith((".mp4", ".avi", ".mov"))]
@@ -144,7 +142,6 @@ def process_videos_in_batches(video_folder, output_folder, batch_size=5):
 
             print(f"Processing {video_file}...")
 
-
             cap = cv2.VideoCapture(video_path)
             all_keypoints = []
 
@@ -163,14 +160,14 @@ def process_videos_in_batches(video_folder, output_folder, batch_size=5):
                     continue
 
                 # Step 2: Estimate pose using RTMPose (PyTorch)
-                #try:
-                keypoints = estimate_pose(frame, person_detections)
-                all_keypoints.append(keypoints)
-                #except Exception as e:
-                #    print (f"Exception occured with {video_file}. Skipping for now!")
-                #    mismatched_videos.append(video_file)
-                #    mismatch_flag = True
-                #    break
+                try:
+                    keypoints = estimate_pose(frame, person_detections)
+                    all_keypoints.append(keypoints)
+                except Exception as e:
+                    print (f"Exception occured with {video_file}. Skipping for now!")
+                    mismatched_videos.append(video_file)
+                    mismatch_flag = True
+                    break
 
             cap.release()
 
