@@ -36,7 +36,8 @@ class SignBertModel(pl.LightningModule):
         # Load the pre-trained base model from the given checkpoint
         self.model = BaseModel.load_from_checkpoint(ckpt, map_location="cpu", 
                                                     arms_extractor_cls=head_args["arms_extractor_cls"], 
-                                                    arms_extractor_args=head_args["arms_extractor_args"])
+                                                    arms_extractor_args=head_args["arms_extractor_args"],
+                                                    strict=False)
         self._init_base_model()
         # Determine the input channel size for the custom head based on the base model's output
         ge_hid_dim = self.model.hparams.gesture_extractor_args["hid_dim"]
